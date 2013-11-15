@@ -4,6 +4,7 @@ classdef MemeticAutoencoderChromosome < handle
     properties
         fitness = 0;
         
+        autoEncoder % Holds weights for this autoencoder
         modified = true;   % Determines if the fitness need to be updated
     end
     
@@ -14,10 +15,10 @@ classdef MemeticAutoencoderChromosome < handle
                 return;
             elseif nargin < 2
                 % Initializes chromosome randomly
-                % TODO
+                chromo.autoEncoder = randn(params.hiddenLayerSize, 1);
             else
                 % Make a deep copy of the given chromosome
-                % TODO
+                chromo.autoEncoder = chromoToClone.autoEncoder;
             end
         end
    
