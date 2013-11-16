@@ -6,7 +6,9 @@ classdef MemeticAutoencoderChromosome < handle
         
         autoEncoder % Holds weights for this autoencoder
         modified = true;   % Determines if the fitness need to be updated
-        hiddenLayerSize % Hidden layer size
+        vectorLength
+        hiddenLayerSize
+        inputLayerSize
     end
     
     methods
@@ -16,12 +18,17 @@ classdef MemeticAutoencoderChromosome < handle
                 return;
             elseif nargin < 2
                 % Initializes chromosome randomly
-                chromo.autoEncoder = randn(params.hiddenLayerSize, 1);
+                chromo.vectorLength = 2*params.inputLayerSize*params.hiddenLayerSize +...
+                                      params.hiddenLayerSize + params.inputLayerSize;
+                chromo.autoEncoder = randn(chromo.vectorLength, 1);
                 chromo.hiddenLayerSize = params.hiddenLayerSize;
+                chromo.inputLayerSize = params.inputLayerSize;
             else
                 % Make a deep copy of the given chromosome
                 chromo.autoEncoder = chromoToClone.autoEncoder;
+                chromo.vectorLength = chromoToClone.vectorLength;
                 chromo.hiddenLayerSize = chromoToClone.hiddenLayerSize;
+                chromo.inputLayerSize = chromoToClone.inputLayerSize;
             end
         end
    
@@ -29,18 +36,18 @@ classdef MemeticAutoencoderChromosome < handle
             % Mutates this chromosome's tree by recursively traversing it
             if pMutation > rand()
                 self.autoEncoder = self.autoEncoder .*...
-                                   exp(randn(self.hiddenLayerSize, 1));
+                                   exp(randn(self.vectorLength, 1));
                 self.modified = true;
             end
         end
         
         function offspring = crossover(parent1, parent2)
             % Performs crossover between two given parents
-            offspring = MemeticAutoencoderChromosome([], parent1)
+            offspring = MemeticAutoencoderChromosome([], parent1);
             blend = rand(self.hiddenLayerSize, 1);
             offspring.autoEncoder = offspring.autoEncoder .* blend +...
                                     parent2.autoEncoder .*...
-                                    (repmat(1, parent1.hiddenLayerSize, 1) - blend);
+                                    (ones(parent1.hiddenLayerSize, 1) - blend);
             offspring.modified = true;
         end
         

@@ -1,0 +1,178 @@
+classdef MemeticAutoencoder < handle
+% Defines a class that optimizes a sparse autoencoder using a memetic algorithm
+
+ properties
+        % Contains all population members
+        population
+        % Contains all offsprinig to be considered for survival
+        offspring
+        
+        % Parameters to algorithm
+        populationSize
+        pMutation
+        pCrossover
+        tournamentSize
+        nGenerations
+        bestSolution
+        nodeInitParams = [];
+        topFitnessValues
+    end
+    
+    methods
+        
+        function MA = MemeticAutoencoder(params)
+            % Constructor initializes parameters for MA
+            
+            % Defaults
+            MA.populationSize = 64;
+            MA.pMutation = 0.001;
+            MA.pCrossover = 0.9;
+            MA.tournamentSize = 5;
+            MA.nGenerations = 50;
+            MA.nodeInitParams.hiddenLayerSize = 1000;
+            if nargin > 0
+                if isfield(params, 'populationSize')
+                    MA.populationSize = params.populationSize;
+                end
+                if isfield(params, 'pMutation')
+                    MA.pMutation = params.pMutation;
+                end
+                if isfield(params, 'pCrossover')
+                    MA.pCrossover = params.pCrossover;
+                end
+                if isfield(params, 'tournamentSize')
+                    MA.tournamentSize = params.tournamentSize;
+                end
+                if isfield(params, 'nGenerations')
+                    MA.nGenerations = params.nGenerations;
+                end
+            end
+        end
+        
+        function [bestSolution, topFitnessValues] = trainMemeticAutoencoder(self, data)
+            % Primary interface to running the algorithm
+
+            self.nodeInitParams.inputLayerSize = data(1).image
+            % Initialize the population
+            disp('Initializing population and evaluating initial fitness');
+            % TODO: write MemeticAutoencoderChromosome
+            self.population =...
+                MemeticAutoencoderChromosome.empty(self.populationSize, 0);
+            self.offspring =...
+                MemeticAutoencoderChromosome.empty(self.populationSize, 0);
+            for i = 1:self.populationSize
+                self.population(i) =...
+                    MemeticAutoencoderChromosome(self.nodeInitParams);
+                self.population(i).fitness =...
+                    evaluateMAFitness(data, self.population(i));
+                fprintf('Fitness of population member %d = %f\n', i, self.population(i).fitness);
+            end
+
+            % Primary loop for nGenerations
+            self.topFitnessValues = zeros(1, self.nGenerations+1);
+            self.bestSolution = MemeticAutoencoderChromosome([], self.population(1));
+            for iGeneration = 1:self.nGenerations
+                self.updateTopFitness(iGeneration, data);
+                fprintf('Generation %d top full fitness: %f\n', iGeneration,...
+                        self.topFitnessValues(iGeneration));
+
+                fprintf('Performing crossover on generation %d\n', iGeneration);
+                self.crossover(self.pCrossover);
+
+                fprintf('Performing mutation on generation %d\n', iGeneration);
+                for i = 1:self.populationSize
+                    self.population(i).mutate(self.pMutation);
+                end
+
+                fprintf('Evaluating fitness of generation %d\n', iGeneration);
+                for i = 1:self.populationSize
+                    if self.population(i).modified
+                        self.population(i).fitness =...
+                            evaluateMAFitness(data, self.population(i));
+                        self.population(i).modified = false;
+                    end
+                    if self.offspring(i).modified
+                        self.offspring(i).fitness =...
+                            evaluateMAFitness(data, self.population(i));
+                        self.offspring(i).modified = false;
+                    end
+                    fprintf('Generation %d top fitness: %f\n', iGeneration,...
+                        self.bestSolution.fitness);
+                end
+
+                fprintf('Performing survivor selection on generation %d\n', iGeneration);
+                self.survivorSelection();
+            end
+            
+            % Return best solution
+            self.updateTopFitness(self.nGenerations+1, data);
+            bestSolution = self.bestSolution;
+            topFitnessValues = self.topFitnessValues;
+        end
+        
+        function updateTopFitness(self, iGeneration, data)
+            % Find top performing chromosome and update best overall
+            % solution
+            self.topFitnessValues(iGeneration) = 0;
+            currentBestSolution = 1;
+            for i = 1:self.populationSize
+                if self.population(i).fitness > self.population(currentBestSolution).fitness
+                    currentBestSolution = i;
+                end
+            end
+            self.topFitnessValues(iGeneration) = evaluateMAFitness(...
+                data, self.population(currentBestSolution));
+            
+            % Update best overall solution
+            if self.topFitnessValues(iGeneration) > self.bestSolution.fitness
+                self.bestSolution = MemeticAutoencoderChromosome([],...
+                    self.population(currentBestSolution));
+            end
+        end
+        
+        function iParent = selectParent(self)
+            % Select parent using tournament style selection
+            tournamentParticipants = zeros(self.tournamentSize, 1);
+            iParent = -1;
+            for i = 1:self.tournamentSize
+                tournamentParticipants(i) = randi([1, self.populationSize]);
+                if iParent == -1 ||...
+                   (self.population(tournamentParticipants(i)).fitness > ...
+                    self.population(iParent))
+                    iParent = tournamentParticipants(i);
+                end
+            end
+        end
+
+        function crossover(self, pCrossover)
+            % Performs crossover, producing one new offspring per crossover
+            for i = 1:self.populationSize
+                iParent1 = self.selectParent();
+                iParent2 = self.selectParent();
+                while iParent2 == iParent1
+                    iParent2 = self.selectParent();
+                end
+
+                if rand() < pCrossover
+                    self.offspring(i) = MemeticAutoencoderChromosome([],...
+                        self.population(iParent1).crossover(self.population(iParent2)));
+                else
+                    self.offpsring(i) = MemeticAutoencoderChromosome([],...
+                        self.population(iParent1));
+                end
+            end
+        end
+
+        function survivorSelection(self)
+            % Select members of population to survive to next round
+            % using (mu+lambda) selection
+
+            survivalCandidates = [self.population, self.offspring];
+            [~, idx] = sort([survivalCandidates.fitness], 'descend');
+            
+            % Keep top half of total survival candidates
+            self.population = survivalCandidates(idx(1:self.populationSize));
+        end
+        
+    end
+end

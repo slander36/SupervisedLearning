@@ -14,6 +14,7 @@ classdef MemeticAutoencoder < handle
         tournamentSize
         nGenerations
         bestSolution
+        nodeInitParams = [];
         topFitnessValues
     end
     
@@ -28,6 +29,7 @@ classdef MemeticAutoencoder < handle
             MA.pCrossover = 0.9;
             MA.tournamentSize = 5;
             MA.nGenerations = 50;
+            MA.nodeInitParams.hiddenLayerSize = 1000;
             if nargin > 0
                 if isfield(params, 'populationSize')
                     MA.populationSize = params.populationSize;
@@ -50,6 +52,8 @@ classdef MemeticAutoencoder < handle
         function [bestSolution, topFitnessValues] = trainMemeticAutoencoder(self, data)
             % Primary interface to running the algorithm
 
+            self.nodeInitParams.inputLayerSize = length(data(1).image);
+            
             % Initialize the population
             disp('Initializing population and evaluating initial fitness');
             % TODO: write MemeticAutoencoderChromosome
@@ -60,7 +64,6 @@ classdef MemeticAutoencoder < handle
             for i = 1:self.populationSize
                 self.population(i) =...
                     MemeticAutoencoderChromosome(self.nodeInitParams);
-                % TODO: write evaluateMAFitness
                 self.population(i).fitness =...
                     evaluateMAFitness(data, self.population(i));
                 fprintf('Fitness of population member %d = %f\n', i, self.population(i).fitness);
@@ -103,10 +106,6 @@ classdef MemeticAutoencoder < handle
             end
             
             % Return best solution
-            for i = 1:self.populationSize
-                self.population(i).fitness =...
-                    evaluateMAFitness(data, self.population(i));
-            end
             self.updateTopFitness(self.nGenerations+1, data);
             bestSolution = self.bestSolution;
             topFitnessValues = self.topFitnessValues;
@@ -155,8 +154,13 @@ classdef MemeticAutoencoder < handle
                     iParent2 = self.selectParent();
                 end
 
-                self.offspring(i) = MemeticAutoencoderChromosome([],...
-                    self.population(iParent1).crossover(self.population(iParent2)));
+                if rand() < pCrossover
+                    self.offspring(i) = MemeticAutoencoderChromosome([],...
+                        self.population(iParent1).crossover(self.population(iParent2)));
+                else
+                    self.offpsring(i) = MemeticAutoencoderChromosome([],...
+                        self.population(iParent1));
+                end
             end
         end
 
