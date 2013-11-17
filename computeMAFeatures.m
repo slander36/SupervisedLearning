@@ -1,4 +1,4 @@
-function [fitness, error] = evaluateMAFitness(data, chromo, useLBFGS)
+function features = computeMAFeatures(data, chromo, useLBFGS)
     % Evaluates the fitness of the given chromosome (weight matrix) using the
     % given data
 
@@ -39,9 +39,7 @@ function [fitness, error] = evaluateMAFitness(data, chromo, useLBFGS)
         autoEncoderTheta = autoEncoder;
     end
     
-    % Get reconstruction error for all samples
-    reconstruction = reconstructFromAutoencoder(autoEncoderTheta, chromo.hiddenLayerSize,...
+    % Get activation of this autoencoder
+    features = feedForwardAutoencoder(autoEncoderTheta, chromo.hiddenLayerSize,...
                                                 chromo.inputLayerSize, vertcat(data.image)');
-    error = mean(sum((reconstruction - vertcat(data.image)').^2));
-    fitness = exp(-error/1000);
 end

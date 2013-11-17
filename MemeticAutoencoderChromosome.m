@@ -29,6 +29,7 @@ classdef MemeticAutoencoderChromosome < handle
                 chromo.vectorLength = chromoToClone.vectorLength;
                 chromo.hiddenLayerSize = chromoToClone.hiddenLayerSize;
                 chromo.inputLayerSize = chromoToClone.inputLayerSize;
+                chromo.fitness = chromoToClone.fitness;
             end
         end
    
@@ -44,13 +45,16 @@ classdef MemeticAutoencoderChromosome < handle
         function offspring = crossover(parent1, parent2)
             % Performs crossover between two given parents
             offspring = MemeticAutoencoderChromosome([], parent1);
-            blend = rand(self.hiddenLayerSize, 1);
+            blend = rand(parent1.vectorLength, 1);
             offspring.autoEncoder = offspring.autoEncoder .* blend +...
                                     parent2.autoEncoder .*...
-                                    (ones(parent1.hiddenLayerSize, 1) - blend);
+                                    (ones(parent1.vectorLength, 1) - blend);
             offspring.modified = true;
         end
-        
+       
+        function features = computeFeatures(self, input)
+            features = computeMAFeatures(input, self);
+        end
     end
 end
 

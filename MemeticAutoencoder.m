@@ -24,12 +24,12 @@ classdef MemeticAutoencoder < handle
             % Constructor initializes parameters for MA
             
             % Defaults
-            MA.populationSize = 64;
+            MA.populationSize = 500;
             MA.pMutation = 0.001;
             MA.pCrossover = 0.9;
             MA.tournamentSize = 5;
-            MA.nGenerations = 50;
-            MA.nodeInitParams.hiddenLayerSize = 1000;
+            MA.nGenerations = 20;
+            MA.nodeInitParams.hiddenLayerSize = 200;
             if nargin > 0
                 if isfield(params, 'populationSize')
                     MA.populationSize = params.populationSize;
@@ -56,7 +56,6 @@ classdef MemeticAutoencoder < handle
             
             % Initialize the population
             disp('Initializing population and evaluating initial fitness');
-            % TODO: write MemeticAutoencoderChromosome
             self.population =...
                 MemeticAutoencoderChromosome.empty(self.populationSize, 0);
             self.offspring =...
@@ -64,7 +63,7 @@ classdef MemeticAutoencoder < handle
             for i = 1:self.populationSize
                 self.population(i) =...
                     MemeticAutoencoderChromosome(self.nodeInitParams);
-                self.population(i).fitness =...
+                [self.population(i).fitness, ~] =...
                     evaluateMAFitness(data, self.population(i));
                 fprintf('Fitness of population member %d = %f\n', i, self.population(i).fitness);
             end
@@ -88,12 +87,12 @@ classdef MemeticAutoencoder < handle
                 fprintf('Evaluating fitness of generation %d\n', iGeneration);
                 for i = 1:self.populationSize
                     if self.population(i).modified
-                        self.population(i).fitness =...
+                        [self.population(i).fitness, ~] =...
                             evaluateMAFitness(data, self.population(i));
                         self.population(i).modified = false;
                     end
                     if self.offspring(i).modified
-                        self.offspring(i).fitness =...
+                        [self.offspring(i).fitness, ~] =...
                             evaluateMAFitness(data, self.population(i));
                         self.offspring(i).modified = false;
                     end
@@ -121,7 +120,7 @@ classdef MemeticAutoencoder < handle
                     currentBestSolution = i;
                 end
             end
-            self.topFitnessValues(iGeneration) = evaluateMAFitness(...
+            [self.topFitnessValues(iGeneration), ~] = evaluateMAFitness(...
                 data, self.population(currentBestSolution));
             
             % Update best overall solution
@@ -158,7 +157,7 @@ classdef MemeticAutoencoder < handle
                     self.offspring(i) = MemeticAutoencoderChromosome([],...
                         self.population(iParent1).crossover(self.population(iParent2)));
                 else
-                    self.offpsring(i) = MemeticAutoencoderChromosome([],...
+                    self.offspring(i) = MemeticAutoencoderChromosome([],...
                         self.population(iParent1));
                 end
             end

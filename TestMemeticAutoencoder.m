@@ -1,6 +1,6 @@
 % Driver script for MemeticAutoencoder algorithm
 
-buildData = false;
+buildData = true;
 
 if buildData
     for i = 1:length(trainLabels)
@@ -10,4 +10,4 @@ if buildData
 end
 
 ma = MemeticAutoencoder();
-[bestSolution, topFitnessValues] = ma.trainMemeticAutoencoder(data(1:1000));
+[bestSolution, topFitnessValues] = ma.trainMemeticAutoencoder(data(1:10000));
