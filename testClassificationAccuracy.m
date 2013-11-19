@@ -1,11 +1,11 @@
-function accuracy = testClassificationAccuracy(data, chromosome, usePCA, nPCs)
+function accuracy = testClassificationAccuracy(tuneData, data, chromosome, usePCA, nPCs)
     % Evaluates the fitness of the given candidate solution using the given
     % data.
     
-    if nargin < 4
+    if nargin < 5
         nPCs = 200;
         nFolds = 5;
-        if nargin < 3
+        if nargin < 4
             usePCA = false;
         end        
     end
@@ -20,6 +20,8 @@ function accuracy = testClassificationAccuracy(data, chromosome, usePCA, nPCs)
         [hold, ~] = reduceDimension(vertcat(data.image)', V, nPCs);
         features(:, :) = hold';
     else
+        % Tune autoencoder using L-BFGS
+        tuneAutoEncoder(tuneData, chromosome);
         features = zeros(nSamples, chromosome.hiddenLayerSize);
         features(:, :) = chromosome.computeFeatures(data)';
     end
