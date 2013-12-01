@@ -1,10 +1,11 @@
-function accuracy = testClassificationAccuracy(tuneData, data, chromosome, usePCA, nPCs)
+function [accuracy, precision, recall, mcc, fmeasure] = testClassificationAccuracy(...
+    tuneData, data, chromosome, usePCA, nPCs)
     % Evaluates the fitness of the given candidate solution using the given
     % data.
     
+    nFolds = 5;
     if nargin < 5
         nPCs = 200;
-        nFolds = 5;
         if nargin < 4
             usePCA = false;
         end        
@@ -16,8 +17,8 @@ function accuracy = testClassificationAccuracy(tuneData, data, chromosome, usePC
     % Evaluate features of data using given chromosome
     if usePCA
         features = zeros(nSamples, nPCs);
-        [~, V, ~] = calculatePCA(vertcat(data.image)');
-        [hold, ~] = reduceDimension(vertcat(data.image)', V, nPCs);
+        [~, V, ~] = calculatePCA(vertcat(tuneData.image)');
+        [hold, ~] = reduceDimension(vertcat(tuneData.image)', V, nPCs);
         features(:, :) = hold';
     else
         % Tune autoencoder using L-BFGS
@@ -27,7 +28,10 @@ function accuracy = testClassificationAccuracy(tuneData, data, chromosome, usePC
     end
     labels = [data.label]';
         
-    foldAccuracy = zeros(nFolds, 1);
+    tp = 0;
+    fp = 0;
+    fn = 0;
+    tn = 0;
     for i = 1:nFolds
         % Compute train and test ranges of dataset
         testRange = floor((i-1)*nSamples/nFolds)+1:floor(i*nSamples/nFolds);
@@ -38,11 +42,24 @@ function accuracy = testClassificationAccuracy(tuneData, data, chromosome, usePC
         model = trainSVMinstances(labels(trainRange), features(trainRange, :), '');
         
         % Test SVM on testRange
-        foldAccuracy(i) = testSVMinstances(model, labels(testRange),...
-                                           features(testRange, :), '');
+        [~, predictedLabels] = testSVMinstances(model,...
+            labels(testRange), features(testRange, :), '');
+        tp = tp + length(intersect(find(predictedLabels==1),...
+                                   find(predictedLabels==labels(testRange))));
+        fp = fp + length(intersect(find(predictedLabels==1),...
+                                   find(predictedLabels~=labels(testRange))));
+        tn = tn + length(intersect(find(predictedLabels==0),...
+                                   find(predictedLabels==labels(testRange))));
+        fn = fn + length(intersect(find(predictedLabels==0),...
+                                   find(predictedLabels~=labels(testRange))));
     end
     
-    accuracy = mean(foldAccuracy);
+    accuracy = (tp+tn)/(tp+tn+fp+fn);
+    precision = tp/(tp+fp);
+    recall = tp/(tp+fn);
+    % Matthews correlation coefficient
+    mcc = (tp*tn - fp*fn)/sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn));
+    fmeasure = 2*(precision*recall)/(precision+recall);
 end
 
 
